@@ -8,6 +8,13 @@ DATABASE_URL = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRE
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 
-async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+# async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 Base = declarative_base()
+
+async def get_db() -> AsyncSession:
+    async_session = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with async_session() as session:
+        yield session
