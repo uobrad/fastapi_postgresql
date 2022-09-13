@@ -7,13 +7,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from database.schemas import *
 
+from auth.hash_password import HashPassword
+from fastapi.security import OAuth2PasswordRequestForm
+from auth.jwt_handler import create_access_token
+import logging
+
 user_router = APIRouter(
     tags=["User"],
 )
 
-@user_router.post("/user")
-async def add_song(user: CreateUserSchema, session: AsyncSession = Depends(get_db)):
+hash_password = HashPassword()
+
+@user_router.post("/signup")
+async def add_user(user: CreateUserSchema, session: AsyncSession = Depends(get_db)):
     user=User(name=user.name, email=user.email, password=user.password, photo=user.photo, role=user.role)
+    hashed_password = hash_password.create_hash(user.password)
+    user.password = hashed_password
     session.add(user)
     await session.commit()
     await session.refresh(user)
@@ -25,17 +34,32 @@ async def add_song(user: CreateUserSchema, session: AsyncSession = Depends(get_d
 #
 #
 #
-# @user_router.post("/signup")
-# async def sign_user_up(user: CreateUserSchema) -> dict:
-#     user_exist = await User.find_one(User.email == user.email)
-#
-#     if user_exist:
-#         raise HTTPException(
-#             status_code=status.HTTP_409_CONFLICT,
-#             detail="User with email provided exists already."
-#         )
-#     # await user_database.save(user)
-#
-#     return {
-#         "message": "User created successfully"
-#     }
+@user_router.post("/signin")
+async def sign_user_in(user: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_db)):
+    # user_exist = await User.find_one(User.email == user.username)
+    # response_model = TokenResponse
+    user_exist = (await session.execute(select(User).where(User.email == user.username))).scalar_one() #fetchone vraca listu, scalar vraca objekat sa atributom
+    print(type(user_exist))
+
+
+
+
+
+    # logging.warning(user_exist)
+    # return user_exist
+    if not user_exist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User with email does not exist."
+        )
+    if hash_password.verify_hash(user.password, user_exist.password): #user_exist ne dohvata atribut password
+        access_token = create_access_token(user_exist.email)
+        return {
+            "access_token": access_token,
+            "token_type": "Bearer"
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid details passed."
+    )

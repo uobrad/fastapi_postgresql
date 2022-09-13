@@ -44,12 +44,16 @@ async def add_post(post: CreatePostSchema, session: AsyncSession = Depends(get_d
 
 @postv1_router.put("/update/{id}")
 async def update_post(id: int, body: UpdatePostSchema, session: AsyncSession = Depends(get_db)):
-    current_post = await session.execute(update(Post).where(Post.id == id).values(
+    await session.execute(update(Post).where(Post.id == id).values(
         title=body.title, content=body.content, category=body.category, image=body.image
     ))
 
     await session.commit()
-    await session.refresh(current_post)
+    current_post = (await session.execute(select(Post).where(Post.id == id))).fetchone()
+    logging.warning(current_post)
+
+
+    # await session.refresh(current_post)
     return current_post
 
 

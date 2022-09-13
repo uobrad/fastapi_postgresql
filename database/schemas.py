@@ -76,3 +76,7 @@ class ListPostResponse(BaseModel):
     status: str
     results: int
     posts: List[PostResponse]
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
