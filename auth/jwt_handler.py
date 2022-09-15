@@ -8,6 +8,11 @@ from database.models import User
 
 settings = Settings()
 
+from database.connection import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+from sqlalchemy.future import select
+
 
 def create_access_token(user: str) -> str:
     payload = {
@@ -19,7 +24,7 @@ def create_access_token(user: str) -> str:
     return token
 
 
-async def verify_access_token(token: str) -> dict:
+async def verify_access_token(token: str, session: AsyncSession = Depends(get_db)) -> dict:
     try:
         data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 
@@ -35,7 +40,9 @@ async def verify_access_token(token: str) -> dict:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Token expired!"
             )
-        user_exist = await User.find_one(User.email == data["user"])
+        # user_exist = await User.find_one(User.email == data["user"])
+        user_exist = (await session.execute(select(User).where(User.email == data["user"]))).scalar_one()
+
         if not user_exist:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -8,6 +8,7 @@ from sqlalchemy.future import select
 from sqlalchemy import update
 
 import logging
+from auth.authenticate import authenticate
 
 
 postv1_router = APIRouter(
@@ -35,7 +36,7 @@ async def retrieve_all_posts(session: AsyncSession = Depends(get_db)):
 
 
 @postv1_router.post("/post")
-async def add_post(post: CreatePostSchema, session: AsyncSession = Depends(get_db)):
+async def add_post(post: CreatePostSchema, session: AsyncSession = Depends(get_db), user: str = Depends(authenticate)):
     post = Post(title=post.title, content=post.content, category=post.category, image=post.image, user_id=post.user_id)
     session.add(post)
     await session.commit()
